@@ -33,7 +33,6 @@ from sun import hrSolarPos, perezComp, solarPos, sunIncident
 import pandas as pd
 from readepw import readepw
 
-
 def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5, D = None,
              rowType = 'interior', transFactor = 0.01, cellRows = 6, 
              PVfrontSurface = 'glass', PVbackSurface = 'glass',  albedo = 0.2,  
@@ -148,7 +147,7 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
             outputheadervars=[lat, lng, tz, beta, sazm, C, rtr, rowType, transFactor, cellRows, PVfrontSurface,
                              PVbackSurface, albedo, tracking]
             
-            
+
             if tracking==True:
                 outputheader+=['Backtracking']
                 outputheadervars.append(backtrack)
@@ -179,11 +178,9 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                 outputtitles+=['D']
                     
             sw.writerow(outputtitles)
-            
-            ## Loop through file.  TODO: replace this with for loop.
-            rl = 0
-            
-            while (rl < noRows):
+
+            sunUpIndex = -1
+            for rl in range(0, noRows):
           
                 myTimestamp=myTMY3.index[rl]
                 year = myTimestamp.year
@@ -195,9 +192,7 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                 dhi = myTMY3.DHI[rl]#get_value(rl,8,"False")
                 Tamb=myTMY3.DryBulb[rl]#get_value(rl,29,"False")
                 Vwind=myTMY3.Wspd[rl]#get_value(rl,44,"False")
-           #     
-                rl = rl+1   # increasing while count
-                            
+
                 azm = 9999.0; zen = 9999.0; elv = 9999.0;
                 if (dataInterval == 60):
                     azm, zen, elv, dec, sunrise, sunset, Eo, tst, suntime = hrSolarPos(year, month, day, hour, lat, lng, tz)
@@ -210,7 +205,29 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                 #123 check abouve this for reading / printing functions
             
                 if (zen < 0.5 * math.pi):    # If daylight hours
-                
+
+                    sunUpIndex += 1
+
+                    with open('expectedWeather.h', 'a+') as writefile:
+
+                        if sunUpIndex == 0:
+                            writefile.write('#ifndef _EXPECTED_WEATHER_H_\n')
+                            writefile.write('#define _EXPECTED_WEATHER_H_\n')
+                            writefile.write('#include <vector>\n')
+                            writefile.write('static std::vector<std::vector<double>> expectedWeather = {\n')
+                            data = [year, month, day, hour - 1, 30, dni, dhi]
+                            lst = map(str, data)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+                        elif rl == noRows - 1:
+                            writefile.write('};\n')
+                            writefile.write('#endif\n')
+                        else:
+                            data = [year, month, day, hour - 1, 30, dni, dhi]
+                            lst = map(str, data)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+
                     # a. CALCULATE THE IRRADIANCE DISTRIBUTION ON THE GROUND *********************************************************************************************
                     #double[] rearGroundGHI = new double[100], frontGroundGHI = new double[100]; ;   # For global horizontal irradiance for each of 100 ground segments, to the rear and front of front of row edge         
                     # Determine where on the ground the direct beam is shaded for a sun elevation and azimuth
@@ -242,13 +259,11 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                             
                         [C, D] = trackingBFvaluescalculator(beta, hub_height, rtr)
                         [rearSkyConfigFactors, frontSkyConfigFactors] = getSkyConfigurationFactors(rowType, beta, C, D);       ## Sky configuration factors are the same for all times, only based on geometry and row type
-    
-    
-    
+
                     rearGroundGHI=[]
                     frontGroundGHI=[]
                     pvFrontSH, pvBackSH, maxShadow, rearGroundSH, frontGroundSH = getGroundShadeFactors (rowType, beta, C, D, elv, azm, sazm)
-            
+
                     # Sum the irradiance components for each of the ground segments, to the front and rear of the front of the PV row
                     #double iso_dif = 0.0, circ_dif = 0.0, horiz_dif = 0.0, grd_dif = 0.0, beam = 0.0;   # For calling PerezComp to break diffuse into components for zero tilt (horizontal)                           
                     ghi, iso_dif, circ_dif, horiz_dif, grd_dif, beam = perezComp(dni, dhi, albedo, zen, 0.0, zen)
@@ -268,12 +283,82 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                         else:
                             frontGroundGHI[k] += (beam + circ_dif) * transFactor;   # Add beam and circumsolar component transmitted thru module spacing if shaded
                     
-            
+                    with open('expectedRearGroundGHI.h', 'a+') as writefile:
+                        if sunUpIndex == 0:
+                            writefile.write('#ifndef _EXPECTED_REAR_GHI_H_\n')
+                            writefile.write('#define _EXPECTED_REAR_GHI_H_\n')
+                            writefile.write('#include <vector>\n')
+                            writefile.write('static std::vector<std::vector<double>> expectedRearGroundGHI = {\n')
+                            lst = map(str, rearGroundGHI)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+                        elif rl == noRows - 1:
+                            writefile.write('};\n')
+                            writefile.write('#endif\n')
+                        else:
+                            lst = map(str, rearGroundGHI)
+                            line = "{" + ",".join(lst) + "}\n"
+                            writefile.write(line)
+
+                    with open('expectedFrontGroundGHI.h', 'a+') as writefile:
+
+                        if sunUpIndex == 0:
+                            writefile.write('#ifndef _EXPECTED_FRONT_GHI_H_\n')
+                            writefile.write('#define _EXPECTED_FRONT_GHI_H_\n')
+                            writefile.write('#include <vector>\n')
+                            writefile.write('static std::vector<std::vector<double>> expectedFrontGroundGHI = {\n')
+                            lst = map(str, frontGroundGHI)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+                        elif rl == noRows - 1:
+                            writefile.write('};\n')
+                            writefile.write('#endif\n')
+                        else:
+                            lst = map(str, frontGroundGHI)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+
+
                     # b. CALCULATE THE AOI CORRECTED IRRADIANCE ON THE FRONT OF THE PV MODULE, AND IRRADIANCE REFLECTED FROM FRONT OF PV MODULE ***************************
                     #double[] frontGTI = new double[cellRows], frontReflected = new double[cellRows];
                     #double aveGroundGHI = 0.0;          # Average GHI on ground under PV array
                     aveGroundGHI, frontGTI, frontReflected = getFrontSurfaceIrradiances(rowType, maxShadow, PVfrontSurface, beta, sazm, dni, dhi, C, D, albedo, zen, azm, cellRows, pvFrontSH, frontGroundGHI)
-    
+
+                    with open('expectedFrontReflected.h', 'a+') as writefile:
+                        if sunUpIndex == 0:
+                            writefile.write('#ifndef _EXPECTED_FRONT_REFLECTED_H_\n')
+                            writefile.write('#define _EXPECTED_FRONT_REFLECTED_H_\n')
+                            writefile.write('#include <vector>\n')
+                            writefile.write('static std::vector<std::vector<double>> expectedFrontReflected = {\n')
+                            lst = map(str, frontReflected)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+                        elif rl == noRows - 1:
+                            writefile.write('};\n')
+                            writefile.write('#endif\n')
+                        else:
+                            lst = map(str, frontReflected)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+
+
+                    with open('expectedFrontIrradiance.h', 'a+') as writefile:
+                        if sunUpIndex == 0:
+                            writefile.write('#ifndef _EXPECTED_FRONT_IRRADIANCE_H_\n')
+                            writefile.write('#define _EXPECTED_FRONT_IRRADIANCE_H_\n')
+                            writefile.write('#include <vector>\n')
+                            writefile.write('static std::vector<std::vector<double>> expectedFrontIrradiance = {\n')
+                            lst = map(str, frontGTI)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+                        elif rl == noRows - 1:
+                            writefile.write('};\n')
+                            writefile.write('#endif\n')
+                        else:
+                            lst = map(str, frontGTI)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+
                     #double inc, tiltr, sazmr;
                     inc, tiltr, sazmr = sunIncident(0, beta, sazm, 45.0, zen, azm)	    # For calling PerezComp to break diffuse into components for 
                     save_inc=inc
@@ -287,7 +372,43 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                     # CALCULATE THE AOI CORRECTED IRRADIANCE ON THE BACK OF THE PV MODULE,
                     #double[] backGTI = new double[cellRows];
                     backGTI, aveGroundGHI = getBackSurfaceIrradiances(rowType, maxShadow, PVbackSurface, beta, sazm, dni, dhi, C, D, albedo, zen, azm, cellRows, pvBackSH, rearGroundGHI, frontGroundGHI, frontReflected, offset=0)
-               
+
+                    with open('expectedRearIrradiance.h', 'a+') as writefile:
+                        if sunUpIndex == 0:
+                            writefile.write('#ifndef _EXPECTED_REAR_IRRADIANCE_H_\n')
+                            writefile.write('#define _EXPECTED_REAR_IRRADIANCE_H_\n')
+                            writefile.write('#include <vector>\n')
+                            writefile.write('static std::vector<std::vector<double>> expectedRearIrradiance = {\n')
+                            lst = map(str, backGTI)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+                        elif rl == noRows - 1:
+                            writefile.write('};\n')
+                            writefile.write('#endif\n')
+                        else:
+                            lst = map(str, backGTI)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+
+                    with open('expectedScalarValues.h', 'a+') as writefile:
+                        if sunUpIndex == 0:
+                            writefile.write('#ifndef _EXPECTED_SCALAR_H_\n')
+                            writefile.write('#define _EXPECTED_SCALAR_H_\n')
+                            writefile.write('#include <vector>\n')
+                            writefile.write('static std::vector<std::vector<double>> expectedRearIrradiance = {\n')
+                            data = [sum(frontGTI) / len(frontGTI), sum(backGTI) / len(backGTI), pvFrontSH, pvBackSH]
+                            lst = map(str, data)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+                        elif rl == noRows - 1:
+                            writefile.write('};\n')
+                            writefile.write('#endif\n')
+                        else:
+                            data = [sum(frontGTI) / len(frontGTI), sum(backGTI) / len(backGTI), pvFrontSH, pvBackSH]
+                            lst = map(str, data)
+                            line = "{" + ",".join(lst) + "},\n"
+                            writefile.write(line)
+
                     inc, tiltr, sazmr = sunIncident(0, 180.0-beta, sazm-180.0, 45.0, zen, azm)       # For calling PerezComp to break diffuse into components for 
                     gtiAllpc, iso_dif, circ_dif, horiz_dif, grd_dif, beam = perezComp(dni, dhi, albedo, inc, tiltr, zen)   # Call to get components for the tilt
                     
@@ -373,3 +494,4 @@ if __name__ == "__main__":
     backIrrSum = data['GTIBackavg'].sum()
     print('The bifacial ratio for ground clearance {} and rtr spacing {} is: {:.1f}%'.format(C,rtr,backIrrSum/frontIrrSum*100))
     #print("--- %s seconds ---" % (time.time() - start_time))
+
