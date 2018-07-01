@@ -30,6 +30,7 @@ import os
 from vf import getBackSurfaceIrradiances, getFrontSurfaceIrradiances, getGroundShadeFactors
 from vf import getSkyConfigurationFactors, trackingBFvaluescalculator, rowSpacing
 from sun import hrSolarPos, perezComp, solarPos, sunIncident
+from write_header import write_header
 import pandas as pd
 from readepw import readepw
 
@@ -207,26 +208,8 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                 if (zen < 0.5 * math.pi):    # If daylight hours
 
                     sunUpIndex += 1
-
-                    with open('expectedWeather.h', 'a+') as writefile:
-
-                        if sunUpIndex == 0:
-                            writefile.write('#ifndef _EXPECTED_WEATHER_H_\n')
-                            writefile.write('#define _EXPECTED_WEATHER_H_\n')
-                            writefile.write('#include <vector>\n')
-                            writefile.write('static std::vector<std::vector<double>> expectedWeather = {\n')
-                            data = [year, month, day, hour - 1, 30, dni, dhi]
-                            lst = map(str, data)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
-                        elif rl == noRows - 1:
-                            writefile.write('};\n')
-                            writefile.write('#endif\n')
-                        else:
-                            data = [year, month, day, hour - 1, 30, dni, dhi]
-                            lst = map(str, data)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
+                    data = [year, month, day, hour - 1, 30, dni, dhi]
+                    write_header(sunUpIndex, rl, noRows, data, 'expectedWeather.h', '_EXPECTED_WEATHER_H_', 'expectedWeather' )
 
                     # a. CALCULATE THE IRRADIANCE DISTRIBUTION ON THE GROUND *********************************************************************************************
                     #double[] rearGroundGHI = new double[100], frontGroundGHI = new double[100]; ;   # For global horizontal irradiance for each of 100 ground segments, to the rear and front of front of row edge         
@@ -282,41 +265,9 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                             frontGroundGHI[k] += beam + circ_dif;                   # Add beam and circumsolar component if not shaded 
                         else:
                             frontGroundGHI[k] += (beam + circ_dif) * transFactor;   # Add beam and circumsolar component transmitted thru module spacing if shaded
-                    
-                    with open('expectedRearGroundGHI.h', 'a+') as writefile:
-                        if sunUpIndex == 0:
-                            writefile.write('#ifndef _EXPECTED_REAR_GHI_H_\n')
-                            writefile.write('#define _EXPECTED_REAR_GHI_H_\n')
-                            writefile.write('#include <vector>\n')
-                            writefile.write('static std::vector<std::vector<double>> expectedRearGroundGHI = {\n')
-                            lst = map(str, rearGroundGHI)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
-                        elif rl == noRows - 1:
-                            writefile.write('};\n')
-                            writefile.write('#endif\n')
-                        else:
-                            lst = map(str, rearGroundGHI)
-                            line = "{" + ",".join(lst) + "}\n"
-                            writefile.write(line)
 
-                    with open('expectedFrontGroundGHI.h', 'a+') as writefile:
-
-                        if sunUpIndex == 0:
-                            writefile.write('#ifndef _EXPECTED_FRONT_GHI_H_\n')
-                            writefile.write('#define _EXPECTED_FRONT_GHI_H_\n')
-                            writefile.write('#include <vector>\n')
-                            writefile.write('static std::vector<std::vector<double>> expectedFrontGroundGHI = {\n')
-                            lst = map(str, frontGroundGHI)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
-                        elif rl == noRows - 1:
-                            writefile.write('};\n')
-                            writefile.write('#endif\n')
-                        else:
-                            lst = map(str, frontGroundGHI)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
+                    write_header(sunUpIndex, rl, noRows, rearGroundGHI, 'expectedRearGroundGHI.h', '_EXPECTED_REAR_GHI_H_', 'expectedRearGroundGHI' )
+                    write_header(sunUpIndex, rl, noRows, frontGroundGHI, 'expectedFrontGroundGHI.h', '_EXPECTED_FRONT_GHI_H_', 'expectedFrontGroundGHI' )
 
 
                     # b. CALCULATE THE AOI CORRECTED IRRADIANCE ON THE FRONT OF THE PV MODULE, AND IRRADIANCE REFLECTED FROM FRONT OF PV MODULE ***************************
@@ -324,40 +275,9 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                     #double aveGroundGHI = 0.0;          # Average GHI on ground under PV array
                     aveGroundGHI, frontGTI, frontReflected = getFrontSurfaceIrradiances(rowType, maxShadow, PVfrontSurface, beta, sazm, dni, dhi, C, D, albedo, zen, azm, cellRows, pvFrontSH, frontGroundGHI)
 
-                    with open('expectedFrontReflected.h', 'a+') as writefile:
-                        if sunUpIndex == 0:
-                            writefile.write('#ifndef _EXPECTED_FRONT_REFLECTED_H_\n')
-                            writefile.write('#define _EXPECTED_FRONT_REFLECTED_H_\n')
-                            writefile.write('#include <vector>\n')
-                            writefile.write('static std::vector<std::vector<double>> expectedFrontReflected = {\n')
-                            lst = map(str, frontReflected)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
-                        elif rl == noRows - 1:
-                            writefile.write('};\n')
-                            writefile.write('#endif\n')
-                        else:
-                            lst = map(str, frontReflected)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
+                    write_header(sunUpIndex, rl, noRows, frontReflected, 'expectedFrontReflected.h', '_EXPECTED_FRONT_REFLECTED_H_', 'expectedFrontReflected' )
+                    write_header(sunUpIndex, rl, noRows, frontGTI, 'expectedFrontIrradiance.h', '_EXPECTED_FRONT_IRRADIANCE_H_', 'expectedFrontIrradiance' )
 
-
-                    with open('expectedFrontIrradiance.h', 'a+') as writefile:
-                        if sunUpIndex == 0:
-                            writefile.write('#ifndef _EXPECTED_FRONT_IRRADIANCE_H_\n')
-                            writefile.write('#define _EXPECTED_FRONT_IRRADIANCE_H_\n')
-                            writefile.write('#include <vector>\n')
-                            writefile.write('static std::vector<std::vector<double>> expectedFrontIrradiance = {\n')
-                            lst = map(str, frontGTI)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
-                        elif rl == noRows - 1:
-                            writefile.write('};\n')
-                            writefile.write('#endif\n')
-                        else:
-                            lst = map(str, frontGTI)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
 
                     #double inc, tiltr, sazmr;
                     inc, tiltr, sazmr = sunIncident(0, beta, sazm, 45.0, zen, azm)	    # For calling PerezComp to break diffuse into components for 
@@ -373,41 +293,10 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                     #double[] backGTI = new double[cellRows];
                     backGTI, aveGroundGHI = getBackSurfaceIrradiances(rowType, maxShadow, PVbackSurface, beta, sazm, dni, dhi, C, D, albedo, zen, azm, cellRows, pvBackSH, rearGroundGHI, frontGroundGHI, frontReflected, offset=0)
 
-                    with open('expectedRearIrradiance.h', 'a+') as writefile:
-                        if sunUpIndex == 0:
-                            writefile.write('#ifndef _EXPECTED_REAR_IRRADIANCE_H_\n')
-                            writefile.write('#define _EXPECTED_REAR_IRRADIANCE_H_\n')
-                            writefile.write('#include <vector>\n')
-                            writefile.write('static std::vector<std::vector<double>> expectedRearIrradiance = {\n')
-                            lst = map(str, backGTI)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
-                        elif rl == noRows - 1:
-                            writefile.write('};\n')
-                            writefile.write('#endif\n')
-                        else:
-                            lst = map(str, backGTI)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
+                    write_header(sunUpIndex, rl, noRows, backGTI, 'expectedRearIrradiance.h', '_EXPECTED_REAR_IRRADIANCE_H_', 'expectedRearIrradiance' )
 
-                    with open('expectedScalarValues.h', 'a+') as writefile:
-                        if sunUpIndex == 0:
-                            writefile.write('#ifndef _EXPECTED_SCALAR_H_\n')
-                            writefile.write('#define _EXPECTED_SCALAR_H_\n')
-                            writefile.write('#include <vector>\n')
-                            writefile.write('static std::vector<std::vector<double>> expectedRearIrradiance = {\n')
-                            data = [sum(frontGTI) / len(frontGTI), sum(backGTI) / len(backGTI), pvFrontSH, pvBackSH]
-                            lst = map(str, data)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
-                        elif rl == noRows - 1:
-                            writefile.write('};\n')
-                            writefile.write('#endif\n')
-                        else:
-                            data = [sum(frontGTI) / len(frontGTI), sum(backGTI) / len(backGTI), pvFrontSH, pvBackSH]
-                            lst = map(str, data)
-                            line = "{" + ",".join(lst) + "},\n"
-                            writefile.write(line)
+                    data = [sum(frontGTI) / len(frontGTI), sum(backGTI) / len(backGTI), pvFrontSH, pvBackSH]
+                    write_header(sunUpIndex, rl, noRows, data, 'expectedScalarValues.h', '_EXPECTED_SCALAR_H_', 'expectedScalarValues' )
 
                     inc, tiltr, sazmr = sunIncident(0, 180.0-beta, sazm-180.0, 45.0, zen, azm)       # For calling PerezComp to break diffuse into components for 
                     gtiAllpc, iso_dif, circ_dif, horiz_dif, grd_dif, beam = perezComp(dni, dhi, albedo, inc, tiltr, zen)   # Call to get components for the tilt
