@@ -30,7 +30,7 @@ import os
 from vf import getBackSurfaceIrradiances, getFrontSurfaceIrradiances, getGroundShadeFactors
 from vf import getSkyConfigurationFactors, trackingBFvaluescalculator, rowSpacing
 from sun import hrSolarPos, perezComp, solarPos, sunIncident
-from write_header import write_header
+from write_header import write_header, write_text_file
 import pandas as pd
 from readepw import readepw
 
@@ -209,7 +209,8 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
 
                     sunUpIndex += 1
                     data = [year, month, day, hour - 1, 30, dni, dhi]
-                    write_header(sunUpIndex, rl, noRows, data, 'expectedWeather.h', '_EXPECTED_WEATHER_H_', 'expectedWeather' )
+                    write_text_file(sunUpIndex, rl, noRows, data, 'expectedWeather.txt', False)
+                    write_header(sunUpIndex, rl, noRows, data, 'expectedWeather.h', '_EXPECTED_WEATHER_H_', 'expectedWeather', False)
 
                     # a. CALCULATE THE IRRADIANCE DISTRIBUTION ON THE GROUND *********************************************************************************************
                     #double[] rearGroundGHI = new double[100], frontGroundGHI = new double[100]; ;   # For global horizontal irradiance for each of 100 ground segments, to the rear and front of front of row edge         
@@ -266,8 +267,12 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                         else:
                             frontGroundGHI[k] += (beam + circ_dif) * transFactor;   # Add beam and circumsolar component transmitted thru module spacing if shaded
 
-                    write_header(sunUpIndex, rl, noRows, rearGroundGHI, 'expectedRearGroundGHI.h', '_EXPECTED_REAR_GHI_H_', 'expectedRearGroundGHI' )
-                    write_header(sunUpIndex, rl, noRows, frontGroundGHI, 'expectedFrontGroundGHI.h', '_EXPECTED_FRONT_GHI_H_', 'expectedFrontGroundGHI' )
+                    write_text_file(sunUpIndex, rl, noRows, rearGroundGHI, 'expectedRearGroundGHI.txt', True)
+                    write_text_file(sunUpIndex, rl, noRows, frontGroundGHI, 'expectedFrontGroundGHI.txt', True)
+
+
+                    #write_header(sunUpIndex, rl, noRows, rearGroundGHI, 'expectedRearGroundGHI.h', '_EXPECTED_REAR_GHI_H_', 'expectedRearGroundGHI' )
+                    #write_header(sunUpIndex, rl, noRows, frontGroundGHI, 'expectedFrontGroundGHI.h', '_EXPECTED_FRONT_GHI_H_', 'expectedFrontGroundGHI' )
 
 
                     # b. CALCULATE THE AOI CORRECTED IRRADIANCE ON THE FRONT OF THE PV MODULE, AND IRRADIANCE REFLECTED FROM FRONT OF PV MODULE ***************************
@@ -275,8 +280,11 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                     #double aveGroundGHI = 0.0;          # Average GHI on ground under PV array
                     aveGroundGHI, frontGTI, frontReflected = getFrontSurfaceIrradiances(rowType, maxShadow, PVfrontSurface, beta, sazm, dni, dhi, C, D, albedo, zen, azm, cellRows, pvFrontSH, frontGroundGHI)
 
-                    write_header(sunUpIndex, rl, noRows, frontReflected, 'expectedFrontReflected.h', '_EXPECTED_FRONT_REFLECTED_H_', 'expectedFrontReflected' )
-                    write_header(sunUpIndex, rl, noRows, frontGTI, 'expectedFrontIrradiance.h', '_EXPECTED_FRONT_IRRADIANCE_H_', 'expectedFrontIrradiance' )
+                    #write_header(sunUpIndex, rl, noRows, frontReflected, 'expectedFrontReflected.h', '_EXPECTED_FRONT_REFLECTED_H_', 'expectedFrontReflected' )
+                    #write_header(sunUpIndex, rl, noRows, frontGTI, 'expectedFrontIrradiance.h', '_EXPECTED_FRONT_IRRADIANCE_H_', 'expectedFrontIrradiance' )
+
+                    write_text_file(sunUpIndex, rl, noRows, frontReflected, 'expectedFrontRefelected.txt', True)
+                    write_text_file(sunUpIndex, rl, noRows, frontGTI, 'expectedFrontIrradiance.txt', True)
 
 
                     #double inc, tiltr, sazmr;
@@ -293,10 +301,13 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                     #double[] backGTI = new double[cellRows];
                     backGTI, aveGroundGHI = getBackSurfaceIrradiances(rowType, maxShadow, PVbackSurface, beta, sazm, dni, dhi, C, D, albedo, zen, azm, cellRows, pvBackSH, rearGroundGHI, frontGroundGHI, frontReflected, offset=0)
 
-                    write_header(sunUpIndex, rl, noRows, backGTI, 'expectedRearIrradiance.h', '_EXPECTED_REAR_IRRADIANCE_H_', 'expectedRearIrradiance' )
+                    #write_header(sunUpIndex, rl, noRows, backGTI, 'expectedRearIrradiance.h', '_EXPECTED_REAR_IRRADIANCE_H_', 'expectedRearIrradiance' )
+                    write_text_file(sunUpIndex, rl, noRows, backGTI, 'expectedRearIrradiance.txt', True)
+
 
                     data = [sum(frontGTI) / len(frontGTI), sum(backGTI) / len(backGTI), pvFrontSH, pvBackSH]
-                    write_header(sunUpIndex, rl, noRows, data, 'expectedScalarValues.h', '_EXPECTED_SCALAR_H_', 'expectedScalarValues' )
+                    #write_header(sunUpIndex, rl, noRows, data, 'expectedScalarValues.h', '_EXPECTED_SCALAR_H_', 'expectedScalarValues' )
+                    write_text_file(sunUpIndex, rl, noRows, data, 'expectedScalarValues.txt', True)
 
                     inc, tiltr, sazmr = sunIncident(0, 180.0-beta, sazm-180.0, 45.0, zen, azm)       # For calling PerezComp to break diffuse into components for 
                     gtiAllpc, iso_dif, circ_dif, horiz_dif, grd_dif, beam = perezComp(dni, dhi, albedo, inc, tiltr, zen)   # Call to get components for the tilt
