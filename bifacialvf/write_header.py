@@ -4,7 +4,7 @@ def write_header(sunUpIndex, index, timeStepsPerYear, dataArray, fileName, heade
 
     roundedData = dataArray
     if roundData:
-        roundedData = ['%.4f' % elem for elem in dataArray]
+        roundedData = ['%.5f' % elem for elem in dataArray]
 
     if sunUpIndex == 0 and os.path.exists(fileName):
         os.remove(fileName)
@@ -32,7 +32,7 @@ def write_text_file(sunUpIndex, index, timeStepsPerYear, dataArray, fileName, ro
 
     roundedData = dataArray
     if roundData:
-        roundedData = ['%.4f' % elem for elem in dataArray]
+        roundedData = ['%.5f' % elem for elem in dataArray]
 
     if sunUpIndex == 0 and os.path.exists(fileName):
         os.remove(fileName)

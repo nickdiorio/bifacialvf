@@ -324,6 +324,7 @@ def getBackSurfaceIrradiances(rowType, maxShadow, PVbackSurface, beta, sazm, dni
 
                 
                 backGTI[i] += 0.5 * (math.cos(j * dtor) - math.cos((j + 1) * dtor)) * SegAOIcor[index][j] * actualGroundGHI * albedo;     # Add ground reflected component
+#                print(str(i) + ' ' + str(j) + ' ' + str(backGTI[i]))
 
                 #Console.WriteLine("actualGroundGHI = 0,6:0.0 inputGHI = 1,6:0.0 aveArrayGroundGHI = 2,6:0.0", actualGroundGHI, dhi + dni * math.cos(zen), aveGroundGHI);
                 

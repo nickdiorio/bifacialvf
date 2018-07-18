@@ -127,8 +127,10 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
         if tracking==False:        
             ## Sky configuration factors are the same for all times, only based on geometry and row type
             [rearSkyConfigFactors, frontSkyConfigFactors] = getSkyConfigurationFactors(rowType, beta, C, D);       ## Sky configuration factors are the same for all times, only based on geometry and row type
-    
-     
+            write_text_file(0, 0, noRows, rearSkyConfigFactors, 'expectedRearSkyConfigFactors.txt', True)
+            write_text_file(0, 0, noRows, frontSkyConfigFactors, 'expectedFrontSkyConfigFactors.txt', True)
+
+
         ## Create WriteFile and write labels at this time
         
         #check that the save directory exists, unless it's in root
@@ -208,9 +210,8 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                 if (zen < 0.5 * math.pi):    # If daylight hours
 
                     sunUpIndex += 1
-                    data = [year, month, day, hour - 1, 30, dni, dhi]
+                    data = [year, month, day, hour - 1, 30, dni, dhi, azm, zen, elv]
                     write_text_file(sunUpIndex, rl, noRows, data, 'expectedWeather.txt', False)
-                    write_header(sunUpIndex, rl, noRows, data, 'expectedWeather.h', '_EXPECTED_WEATHER_H_', 'expectedWeather', False)
 
                     # a. CALCULATE THE IRRADIANCE DISTRIBUTION ON THE GROUND *********************************************************************************************
                     #double[] rearGroundGHI = new double[100], frontGroundGHI = new double[100]; ;   # For global horizontal irradiance for each of 100 ground segments, to the rear and front of front of row edge         
@@ -243,10 +244,19 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                             
                         [C, D] = trackingBFvaluescalculator(beta, hub_height, rtr)
                         [rearSkyConfigFactors, frontSkyConfigFactors] = getSkyConfigurationFactors(rowType, beta, C, D);       ## Sky configuration factors are the same for all times, only based on geometry and row type
+                        write_text_file(sunUpIndex, rl, noRows, rearSkyConfigFactors, 'expectedRearSkyConfigFactors.txt', True)
+                        write_text_file(sunUpIndex, rl, noRows, frontSkyConfigFactors, 'expectedFrontSkyConfigFactors.txt', True)
 
                     rearGroundGHI=[]
                     frontGroundGHI=[]
                     pvFrontSH, pvBackSH, maxShadow, rearGroundSH, frontGroundSH = getGroundShadeFactors (rowType, beta, C, D, elv, azm, sazm)
+                    write_text_file(sunUpIndex, rl, noRows, rearGroundSH, 'expectedRearGroundShade.txt', True)
+                    write_text_file(sunUpIndex, rl, noRows, rearGroundSH, 'expectedFrontGroundShade.txt', True)
+                    write_text_file(sunUpIndex, rl, noRows, [pvBackSH], 'expectedPVBackSH.txt', True)
+                    write_text_file(sunUpIndex, rl, noRows, [pvFrontSH], 'expectedPVFrontSH.txt', True)
+
+
+
 
                     # Sum the irradiance components for each of the ground segments, to the front and rear of the front of the PV row
                     #double iso_dif = 0.0, circ_dif = 0.0, horiz_dif = 0.0, grd_dif = 0.0, beam = 0.0;   # For calling PerezComp to break diffuse into components for zero tilt (horizontal)                           
@@ -283,7 +293,7 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                     #write_header(sunUpIndex, rl, noRows, frontReflected, 'expectedFrontReflected.h', '_EXPECTED_FRONT_REFLECTED_H_', 'expectedFrontReflected' )
                     #write_header(sunUpIndex, rl, noRows, frontGTI, 'expectedFrontIrradiance.h', '_EXPECTED_FRONT_IRRADIANCE_H_', 'expectedFrontIrradiance' )
 
-                    write_text_file(sunUpIndex, rl, noRows, frontReflected, 'expectedFrontRefelected.txt', True)
+                    write_text_file(sunUpIndex, rl, noRows, frontReflected, 'expectedFrontReflected.txt', True)
                     write_text_file(sunUpIndex, rl, noRows, frontGTI, 'expectedFrontIrradiance.txt', True)
 
 
@@ -305,9 +315,9 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
                     write_text_file(sunUpIndex, rl, noRows, backGTI, 'expectedRearIrradiance.txt', True)
 
 
-                    data = [sum(frontGTI) / len(frontGTI), sum(backGTI) / len(backGTI), pvFrontSH, pvBackSH]
+                    data = [sum(frontGTI) / len(frontGTI), sum(backGTI) / len(backGTI)]
                     #write_header(sunUpIndex, rl, noRows, data, 'expectedScalarValues.h', '_EXPECTED_SCALAR_H_', 'expectedScalarValues' )
-                    write_text_file(sunUpIndex, rl, noRows, data, 'expectedScalarValues.txt', True)
+                    write_text_file(sunUpIndex, rl, noRows, data, 'expectedAverageIrradiance.txt', True)
 
                     inc, tiltr, sazmr = sunIncident(0, 180.0-beta, sazm-180.0, 45.0, zen, azm)       # For calling PerezComp to break diffuse into components for 
                     gtiAllpc, iso_dif, circ_dif, horiz_dif, grd_dif, beam = perezComp(dni, dhi, albedo, inc, tiltr, zen)   # Call to get components for the tilt
@@ -357,7 +367,7 @@ if __name__ == "__main__":
 
     beta = 10                   # PV tilt (deg)
     sazm = 180                  # PV Azimuth(deg) or tracker axis direction
-    C = 1                      # GroundClearance(panel slope lengths). For tracking this is tilt = 0 hub height 
+    C = 0.2                     # GroundClearance(panel slope lengths). For tracking this is tilt = 0 hub height
     D = 0.51519                 # DistanceBetweenRows(panel slope lengths)
     rowType = "interior"        # RowType(first interior last single)
     transFactor = 0.013         # TransmissionFactor(open area fraction)
@@ -370,7 +380,7 @@ if __name__ == "__main__":
     
     # Tracking instructions
     tracking=False
-    backtrack=True
+    backtrack=False
     rtr = 1.5                   # row to row spacing in normalized panel lengths. 
 
     TMYtoread="data/724010TYA.csv"   # VA Richmond
@@ -392,6 +402,8 @@ if __name__ == "__main__":
     # Print the annual bifacial ratio.
     frontIrrSum = data['GTIFrontavg'].sum()
     backIrrSum = data['GTIBackavg'].sum()
+    print('Front side irradiance: ' + str(frontIrrSum))
+    print('Rear side irradiance: ' + str(backIrrSum))
     print('The bifacial ratio for ground clearance {} and rtr spacing {} is: {:.1f}%'.format(C,rtr,backIrrSum/frontIrrSum*100))
     #print("--- %s seconds ---" % (time.time() - start_time))
 
