@@ -207,7 +207,7 @@ def simulate(TMYtoread=None, writefiletitle=None,  beta = 0, sazm = 180, C = 0.5
             
                 #123 check abouve this for reading / printing functions
             
-                if (zen < 0.5 * math.pi):    # If daylight hours
+                if (zen < 0.5 * math.pi and (dhi > 0 or dni > 0)):    # If daylight hours
 
                     sunUpIndex += 1
                     data = [year, month, day, hour - 1, 30, dni, dhi, azm, zen, elv]
